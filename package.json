@@ -1,0 +1,22 @@
+{
+  "name": "schedulebot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node --watch index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/local-auth": "^2.1.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "fs": "^0.0.1-security",
+    "googleapis": "^105.0.0",
+    "node-schedule": "^2.1.1",
+    "node-telegram-bot-api": "^0.65.1"
+  }
+}
