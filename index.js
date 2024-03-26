@@ -56,12 +56,58 @@ function createJob(googleCalendarList, chatId) {
             console.log(cron);
             let job = schedule.scheduleJob(cron, function() {
                 bot.sendMessage(chatId, `${item.summary}`);
+                if(chatId !== process.env.CHAT_ID){
+                    bot.sendMessage(process.env.CHAT_ID, `${item.summary}`);
+                }
                 //sau khi chạy xong thì xoá luôn cron job này.
                 job.cancel();
             });
             // Hủy công việc trước và gán công việc mới vào biến previousJob
             previousJob = job;
         }
+    });
+}
+
+function getGoogleCalendarAPI(chatId) {
+	let currentTime = new Date();
+	let start = `${currentTime.getFullYear()}-${currentTime.getMonth() + 1}-${currentTime.getDate()}T00:00:00+07:00`;
+	let end = `${currentTime.getFullYear()}-${currentTime.getMonth() + 1}-${currentTime.getDate()}T23:59:59+07:00`;
+	getEvents(start, end)
+		.then((res) => {
+			createJob(res, chatId);
+		})
+		.catch((err) => {
+			console.log(err);
+		});
+}
+
+function createCalendar(chatId, message, hour, minute){
+    let currentTime = new Date();
+    // Define event data
+    const event = {
+        summary: `${message}`,
+        description: 'Schedule',
+        start: {
+            dateTime: `${currentTime.getFullYear()}-${currentTime.getMonth() + 1}-${currentTime.getDate()}T${hour}:${minute}:00+07:00`,
+            timeZone: 'Asia/Ho_Chi_Minh'
+        },
+        end: {
+            dateTime: `${currentTime.getFullYear()}-${currentTime.getMonth() + 1}-${currentTime.getDate()}T${hour}:59:59+07:00`,
+            timeZone: 'Asia/Ho_Chi_Minh'
+        },
+    };
+  
+    // Insert event to the calendar
+    calendar.events.insert({
+        auth: auth,
+        calendarId: calendarId,     
+        resource: event,
+    },(err, res) => {
+        if (err) {
+            console.error('Error adding event:', err);
+            return;
+        }
+        getGoogleCalendarAPI(chatId);
     });
 }
 
@@ -81,77 +127,23 @@ bot.onText(/\/remind (.+)/, (msg, match) => {
     const resp = match[1]
     const [timePart, ...messageArr] = resp.split(' ');
     
-    if(timePart === undefined || messageArr.length <= 0){
+    if(timePart === undefined || messageArr.length <= 0 || !isTimePart(timePart)){
         bot.sendMessage(chatId, 'create failed schedule')
         return
     }
-
-    if(!isTimePart(timePart)){
-        bot.sendMessage(chatId, 'create failed schedule')
-        return
-    }
-    
     const [hour, minute] = timePart.split(':');
-    let currentTime = new Date();
-
-    if(hour > 23 || hour < 0){
-        bot.sendMessage(chatId, 'create failed schedule')
-        return
-    }
-    if(minute > 59 || minute < 0){
+    if(hour > 23 || hour < 0 || minute > 59 || minute < 0){
         bot.sendMessage(chatId, 'create failed schedule')
         return
     }
     const message = messageArr.join(' ')
-        
-    // Define event data
-    const event = {
-        summary: `${message}`,
-        description: 'Schedule',
-        start: {
-            dateTime: `2024-03-26T${hour}:${minute}:00+07:00`,
-            timeZone: 'Asia/Ho_Chi_Minh'
-        },
-        end: {
-            dateTime: `2024-03-26T16:T23:59:59+07:00:00+07:00`,
-            timeZone: 'Asia/Ho_Chi_Minh'
-        },
-    };
-  
-    // Insert event to the calendar
-    calendar.events.insert({
-        auth: auth,
-        calendarId: calendarId,     
-        resource: event,
-    },
-    (err, res) => {
-        if (err) {
-            console.error('Error adding event:', err);
-            return;
-        }
-        getGoogleCalendarAPI(chatId);
-    });
-
-    bot.sendMessage(chatId, `Calendar has been added: ${hour}:${minute} `)
+    createCalendar(chatId, message, hour, minute)
+    bot.sendMessage(chatId, `Calendar has been added`)
 })
-
-// get
-function getGoogleCalendarAPI(chatId) {
-	let currentTime = new Date();
-	let start = `${currentTime.getFullYear()}-${currentTime.getMonth() + 1}-${currentTime.getDate()}T00:00:00+07:00`;
-	let end = `${currentTime.getFullYear()}-${currentTime.getMonth() + 1}-${currentTime.getDate()}T23:59:59+07:00`;
-	getEvents(start, end)
-		.then((res) => {
-			createJob(res, chatId);
-		})
-		.catch((err) => {
-			console.log(err);
-		});
-}
 
 // lên lịch mỗi ngày dùng cronjob để lấy lịch trên google celendar
 schedule.scheduleJob('0 7 * * *', function() {
-    let chatId = 6644537116;
+    let chatId = process.env.CHAT_ID;
 	getGoogleCalendarAPI(chatId);
 });
 
